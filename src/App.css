@@ -21,8 +21,21 @@
   align-items: center;
   justify-content: flex-start;
   padding: 2rem;
-  font-size: calc(10px + 1vmin);
+  font-size: calc(9px + 0.8vmin);
   color: white;
+}
+
+.App-header h1 {
+  font-size: 1.6rem;
+  margin-bottom: 1.2rem;
+  color: #61dafb;
+  text-shadow: 0 0 10px rgba(97, 218, 251, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.App-header h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
 }
 
 .App-link {
@@ -39,17 +52,18 @@
 }
 
 .upload-container {
-  margin: 2rem 0;
+  margin: 1.5rem 0;
 }
 
 .upload-button {
   background-color: #61dafb;
   color: #282c34;
-  padding: 12px 24px;
+  padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
   transition: background-color 0.3s;
+  font-size: 0.85rem;
 }
 
 .upload-button:hover {
@@ -59,7 +73,7 @@
 .xml-result {
   width: 100%;
   max-width: 800px;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   text-align: left;
 }
 
@@ -74,19 +88,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .download-button, .toggle-button {
   background-color: #61dafb;
   color: #282c34;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
   transition: background-color 0.3s;
-  font-size: 14px;
+  font-size: 0.8rem;
 }
 
 .download-button:hover, .toggle-button:hover {
@@ -94,7 +108,7 @@
 }
 
 .toggle-button {
-  margin: 1rem 0;
+  margin: 0.8rem 0;
   background-color: #4a5568;
   color: white;
 }
@@ -105,11 +119,11 @@
 
 pre {
   background-color: #1e2129;
-  padding: 1rem;
+  padding: 0.8rem;
   border-radius: 4px;
   overflow: auto;
   max-height: 60vh;
-  font-size: 14px;
+  font-size: 0.75rem;
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -117,4 +131,98 @@ pre {
 .error-message {
   color: #ff6b6b;
   font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Estilos para o editor de produtos */
+.products-editor {
+  width: 100%;
+  max-width: 960px;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.product-item {
+  background-color: #1a1e24;
+  border-radius: 6px;
+  border: 1px solid #3a3f48;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+.product-original {
+  background-color: #2c313a;
+  padding: 0.7rem;
+  display: grid;
+  grid-template-columns: 0.5fr 1fr 3fr 1fr;
+  gap: 0.5rem;
+}
+
+.product-original .product-field:nth-child(3) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.product-edit {
+  padding: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+  border-top: 1px dashed #3a3f48;
+}
+
+.product-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.4rem;
+}
+
+.product-field strong {
+  font-size: 0.7rem;
+}
+
+.product-field label {
+  font-size: 0.7rem;
+  margin-bottom: 0.2rem;
+  color: #a0aec0;
+}
+
+.product-field input {
+  padding: 0.4rem;
+  border: 1px solid #4a5568;
+  border-radius: 3px;
+  background-color: #2d3748;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.product-field input:focus {
+  outline: none;
+  border-color: #61dafb;
+}
+
+.readonly-input {
+  background-color: #1e2129 !important;
+  border-color: #3a3f48 !important;
+  color: #a0aec0 !important;
+  cursor: not-allowed;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.2rem;
+}
+
+.editor-title {
+  text-align: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  color: #61dafb;
 }

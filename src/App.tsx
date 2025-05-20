@@ -64,6 +64,7 @@ function App() {
   const [showRawXml, setShowRawXml] = useState<boolean>(false);
   const [sendingData, setSendingData] = useState<boolean>(false);
   const [apiResponse, setApiResponse] = useState<{ success: boolean; message: string } | null>(null);
+  const [cgccliwms, setCgccliwms] = useState<string>("");
 
   // Função para extrair valor do XML, tratando casos de _text
   const extractValue = (obj: any): string => {
@@ -182,7 +183,7 @@ function App() {
       const result: NFInfoType = {
         CORPEM_ERP_DOC_ENT: {
           CGCCLIWMS: cnpjDest || "99999999999999", // CNPJ do destinatário
-          CGCREM: cnpjEmit || "94516671000153", // CNPJ do emitente
+          CGCREM: "99999999999999", // CGCREM sempre "99999999999999" por padrão
           OBSRESDP: `N.F.: ${numeroNF || "459607"}`,
           TPDESTNF: "2", // Padrão conforme exemplo
           DEV: "0", // Padrão conforme exemplo
@@ -247,6 +248,7 @@ function App() {
     setProducts([]);
     setEditedProducts([]);
     setShowEditor(false);
+    setCgccliwms("");
     
     try {
       // Ler o arquivo como texto
@@ -272,6 +274,7 @@ function App() {
         const { nfInfo: extractedInfo, products: extractedProducts } = extractNFInfo(result);
         setNfInfo(extractedInfo);
         setProducts(extractedProducts);
+        setCgccliwms(extractedInfo.CORPEM_ERP_DOC_ENT.CGCCLIWMS);
         
         // Gerar o mercadoriaInfo diretamente aqui
         const mercadoriaInfo = extractMercadoriaInfo(result);
@@ -553,13 +556,13 @@ function App() {
       
       // Serializar JSONs para envio (sem escape Unicode)
       const mercadoriasPayload = {
-        CGCCLIWMS: mercadoriasJson?.CORPEM_ERP_MERC.CGCCLIWMS,
+        CGCCLIWMS: cgccliwms,
         PRODUTOS: mercadoriasJson?.CORPEM_ERP_MERC.PRODUTOS
       };
       const mercadoriasJsonString = serializeJsonWithoutEscape(mercadoriasPayload);
 
       const nfPayload = {
-        CGCCLIWMS: nfJson?.CORPEM_ERP_DOC_ENT.CGCCLIWMS,
+        CGCCLIWMS: cgccliwms,
         CGCREM: nfJson?.CORPEM_ERP_DOC_ENT.CGCREM,
         OBSRESDP: nfJson?.CORPEM_ERP_DOC_ENT.OBSRESDP,
         TPDESTNF: nfJson?.CORPEM_ERP_DOC_ENT.TPDESTNF,
@@ -670,6 +673,40 @@ function App() {
     }
   };
 
+  // Função para extrair nome do destinatário ou remetente de OBSRESDP e XML
+  const extractName = (type: 'dest' | 'rem'): string => {
+    if (!xmlData || !xmlData.nfeProc || !xmlData.nfeProc.NFe || !xmlData.nfeProc.NFe.infNFe) {
+      return "Informação não disponível no XML";
+    }
+    const infNFe = xmlData.nfeProc.NFe.infNFe;
+
+    try {
+      if (type === 'dest') {
+        if (infNFe.dest && infNFe.dest.xNome) {
+          let destNome = infNFe.dest.xNome;
+          if (typeof destNome === 'object' && destNome._text) {
+            destNome = destNome._text;
+          }
+          return String(destNome) || "Não informado no XML";
+        }
+        return "Destinatário não informado no XML";
+      } else if (type === 'rem') {
+        if (infNFe.emit && infNFe.emit.xNome) {
+          let remetenteNome = infNFe.emit.xNome;
+          if (typeof remetenteNome === 'object' && remetenteNome._text) {
+            remetenteNome = remetenteNome._text;
+          }
+          return String(remetenteNome) || "Não informado no XML";
+        }
+        return "Remetente não informado no XML";
+      }
+    } catch (e) {
+      console.error("Erro ao extrair nome do XML:", e);
+      return "Erro na extração do XML";
+    }
+    return "";
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -694,6 +731,22 @@ function App() {
         {showEditor && editedProducts.length > 0 && (
           <div className="products-editor">
             <h2 className="editor-title">Editar Produtos da Nota Fiscal Para Integração no Sistema Mercocamp</h2>
+            {/* Informações da Nota Fiscal */}
+            {nfInfo && (
+              <div className="nf-summary-info" style={{
+                padding: '10px 15px',
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e9ecef',
+                borderRadius: '5px',
+                marginBottom: '20px',
+                fontSize: '0.9rem',
+                color: '#495057'
+              }}>
+                <p style={{ margin: '5px 0' }}><strong>Número NF:</strong> {nfInfo.CORPEM_ERP_DOC_ENT.NUMNF}</p>
+                <p style={{ margin: '5px 0' }}><strong>Destinatário:</strong> {extractName('dest')}</p>
+                <p style={{ margin: '5px 0' }}><strong>Remetente:</strong> {extractName('rem')}</p>
+              </div>
+            )}
             <div className="products-list">
               {editedProducts.map((product, index) => (
                 <div key={index} className="product-item">
@@ -764,6 +817,28 @@ function App() {
                   </div>
                 </div>
               ))}
+            </div>
+            
+            {/* Input para CGCCLIWMS - Estilo mais discreto */}
+            <div className="cgccliwms-editor" style={{ marginTop: '15px', marginBottom: '20px', padding: '10px', backgroundColor: 'transparent', border: '1px solid #ddd', borderRadius: '5px' }}>
+              <label htmlFor="cgccliwms-input" style={{ display: 'block', color: '#555', marginBottom: '5px', fontSize: '0.9rem' }}>
+                CNPJ do Cliente (CGCCLIWMS):
+              </label>
+              <input 
+                id="cgccliwms-input"
+                type="text" 
+                value={cgccliwms}
+                onChange={(e) => setCgccliwms(e.target.value.replace(/\D/g, ''))} // Permite apenas números
+                placeholder="Digite o CNPJ do cliente (14 dígitos)"
+                maxLength={14} // CNPJ tem 14 dígitos
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '0.95rem'
+                }}
+              />
             </div>
           </div>
         )}

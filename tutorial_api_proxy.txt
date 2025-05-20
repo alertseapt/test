@@ -1,0 +1,289 @@
+===============================================================================
+      TUTORIAL - API PROXY CORPEM-WMS: CADASTRO DE PRODUTOS E DPs DE ENTRADA
+===============================================================================
+
+Este tutorial explica como utilizar a API para realizar duas operações essenciais:
+
+1. Cadastro de produtos no WMS
+2. Criação de DPs de entrada (notas fiscais de entrada)
+
+===============================================================================
+                             INFORMAÇÕES GERAIS
+===============================================================================
+
+URL BASE: http://[servidor]:3000/api/wms
+
+Todas as requisições:
+- Devem usar o método HTTP POST
+- Precisam ter o cabeçalho 'Content-Type: application/json'
+- O corpo da requisição deve ser JSON válido
+
+===============================================================================
+                           1. CADASTRO DE PRODUTOS
+===============================================================================
+
+ENDPOINT: /api/wms/products
+
+Este endpoint permite cadastrar novos produtos no sistema WMS ou atualizar
+produtos existentes.
+
+CAMPOS OBRIGATÓRIOS:
+- CGCCLIWMS: CNPJ do cliente WMS (sem máscara)
+- PRODUTOS: Array com os produtos a serem cadastrados
+  - CODPROD: Código do produto
+  - NOMEPROD: Nome/descrição do produto
+  - EMBALAGENS: Array com as embalagens do produto
+    - CODUNID: Código da unidade (ex: UN, CX, etc.)
+    - FATOR: Quantidade da mercadoria na embalagem
+    - CODBARRA: Código de barras
+
+MODELO DE REQUISIÇÃO:
+
+```javascript
+// Exemplo usando fetch (JavaScript)
+fetch('http://[servidor]:3000/api/wms/products', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    CGCCLIWMS: "00000002000000",
+    PRODUTOS: [
+      {
+        CODPROD: "1003",
+        NOMEPROD: "PRODUTO EXEMPLO 250ML",
+        IWS_ERP: "1",
+        TPOLRET: "1",
+        IAUTODTVEN: "0",
+        QTDDPZOVEN: "",
+        ILOTFAB: "0",
+        IDTFAB: "0",
+        IDTVEN: "0",
+        INSER: "0",
+        SEM_LOTE_CKO: "0",
+        SEM_DTVEN_CKO: "0",
+        CODFAB: "3",
+        NOMEFAB: "Fabricante 3",
+        CODGRU: "grt3",
+        NOMEGRU: "grupo teste3",
+        EMBALAGENS: [
+          {
+            CODUNID: "UN",
+            FATOR: "1",
+            CODBARRA: "7898919447428",
+            PESOLIQ: "2",
+            PESOBRU: "6",
+            ALT: "0.2",
+            LAR: "0.2",
+            COMP: "0.2",
+            VOL: ""
+          }
+        ]
+      }
+    ]
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Erro:', error));
+```
+
+CAMPOS OPCIONAIS IMPORTANTES:
+
+- IWS_ERP: Indicador WMS/ERP (geralmente "1")
+- TPOLRET: Política de retirada da mercadoria (FIFO = "0" ou "1")
+- ILOTFAB: Indica se controla lote no produto (0 = Não, 1 = Sim)
+- IDTFAB: Indica se controla data de fabricação (0 = Não, 1 = Sim)
+- IDTVEN: Indica se controla data de vencimento (0 = Não, 1 = Sim)
+- INSER: Indica se controla número de série (0 = Não, 1 = Sim)
+- PESOLIQ, PESOBRU: Peso líquido e bruto
+- ALT, LAR, COMP: Altura, largura e comprimento (em metros)
+
+===============================================================================
+                      2. CRIAÇÃO DE DPs DE ENTRADA (NOTAS FISCAIS)
+===============================================================================
+
+ENDPOINT: /api/wms/inbound
+
+Este endpoint permite criar documentos de entrada (notas fiscais) no sistema WMS.
+
+CAMPOS OBRIGATÓRIOS:
+- CGCCLIWMS: CNPJ do cliente WMS (sem máscara)
+- CGCREM: CNPJ do remetente (sem máscara)
+- TPDESTNF: Tipo Destinatário NF (1, 2 ou 3)
+- DEV: Indica se é devolução (0 = Não, 1 = Sim)
+- NUMNF: Número da nota fiscal
+- SERIENF: Série da nota fiscal
+- DTEMINF: Data de emissão (formato "dd/mm/aaaa")
+- VLTOTALNF: Valor total da nota fiscal
+- ITENS: Array com os itens da nota fiscal
+  - NUMSEQ: Número sequencial do item
+  - CODPROD: Código do produto
+  - QTPROD: Quantidade do produto
+  - VLTOTPROD: Valor total do produto
+
+MODELO DE REQUISIÇÃO:
+
+```javascript
+// Exemplo usando fetch (JavaScript)
+fetch('http://[servidor]:3000/api/wms/inbound', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    CGCCLIWMS: "99999999999999",
+    CGCREM: "94516671000153",
+    OBSRESDP: "N.F.: 459607",
+    TPDESTNF: "2",
+    DEV: "0",
+    NUMNF: "459607",
+    SERIENF: "2",
+    DTEMINF: "17/03/2020",
+    VLTOTALNF: "250",
+    NUMEPEDCLI: "N.F. 459607",
+    CHAVENF: "43190394516671000153550020004596071023377876",
+    CHAVENF_DEV: "",
+    ITENS: [
+      {
+        NUMSEQ: "1",
+        CODPROD: "5100",
+        QTPROD: "100",
+        VLTOTPROD: "100",
+        NUMPED_COMPRA: "PC12345"
+      },
+      {
+        NUMSEQ: "2",
+        CODPROD: "5101",
+        QTPROD: "100",
+        VLTOTPROD: "150"
+      }
+    ]
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Erro:', error));
+```
+
+CAMPOS OPCIONAIS IMPORTANTES:
+- OBSRESDP: Observação resumida do DP (Nome Fornecedor + CNPJ Remetente)
+- CHAVENF: Chave da nota fiscal eletrônica
+- CHAVENF_DEV: Chave da nota fiscal eletrônica de venda devolvida
+- NUMPED_COMPRA: Número do pedido de compra
+- LOTFAB: Lote de fabricação
+- DTVEN: Data de vencimento (formato "dd/mm/aaaa")
+
+===============================================================================
+                        INFORMAÇÕES DO TIPO DESTINATÁRIO NF
+===============================================================================
+
+TPDESTNF - Tipo Destinatário N.F.
+- 1 (Armazém): A N.F. é destinada ao Armazém e emitida pelo Cliente WMS
+- 2 (Cliente - Normal): A N.F. é destinada ao Cliente WMS e emitida por Terceiros
+- 3 (Cliente - Entrada): A N.F. é destinada ao Cliente WMS e emitida pelo próprio
+
+===============================================================================
+                           RESPOSTAS E TRATAMENTO DE ERROS
+===============================================================================
+
+RESPOSTA DE SUCESSO:
+```json
+{"CORPEM_WS_OK": "OK"}
+```
+
+RESPOSTA DE ERRO (EXEMPLOS):
+```json
+{"CORPEM_WS_ERRO": "077 - Nenhuma Mercadoria informada"}
+{"CORPEM_WS_ERRO": "CNPJ não possui Cliente Formal WMS: 00123000000100"}
+```
+
+TRATAMENTO DE ERROS:
+
+```javascript
+.then(data => {
+  if (data.CORPEM_WS_OK) {
+    console.log('Operação realizada com sucesso!');
+    // Processar sucesso...
+  } else if (data.CORPEM_WS_ERRO) {
+    console.error('Erro WMS:', data.CORPEM_WS_ERRO);
+    // Tratar o erro...
+  }
+})
+```
+
+===============================================================================
+                         EXEMPLOS USANDO AXIOS (ALTERNATIVA)
+===============================================================================
+
+Se estiver utilizando Axios ao invés de fetch:
+
+```javascript
+// Cadastro de produto com Axios
+axios.post('http://[servidor]:3000/api/wms/products', {
+  CGCCLIWMS: "00000002000000",
+  PRODUTOS: [
+    {
+      CODPROD: "1003",
+      NOMEPROD: "PRODUTO EXEMPLO 250ML",
+      // Outros campos conforme necessário
+      EMBALAGENS: [
+        {
+          CODUNID: "UN",
+          FATOR: "1",
+          CODBARRA: "7898919447428"
+          // Outros campos conforme necessário
+        }
+      ]
+    }
+  ]
+})
+.then(response => console.log(response.data))
+.catch(error => console.error('Erro:', error));
+
+// Criação de DP de entrada com Axios
+axios.post('http://[servidor]:3000/api/wms/inbound', {
+  CGCCLIWMS: "99999999999999",
+  CGCREM: "94516671000153",
+  // Outros campos conforme necessário
+  ITENS: [
+    {
+      NUMSEQ: "1",
+      CODPROD: "5100",
+      QTPROD: "100",
+      VLTOTPROD: "100"
+    }
+  ]
+})
+.then(response => console.log(response.data))
+.catch(error => console.error('Erro:', error));
+```
+
+===============================================================================
+                                DICAS IMPORTANTES
+===============================================================================
+
+1. TESTE PRIMEIRO EM AMBIENTE DE HOMOLOGAÇÃO:
+   Sempre teste suas integrações em ambiente de homologação antes de usar
+   em produção.
+
+2. VALIDAÇÃO DE DADOS:
+   Valide todos os dados antes de enviar para a API, especialmente campos
+   como CNPJ, datas e valores.
+
+3. CACHE DE ERROS:
+   Implemente um mecanismo para armazenar erros ocorridos para futuras
+   análises e correções.
+
+4. NUMERAÇÃO DO PEDIDO:
+   O número do pedido (NUMEPEDCLI) deve ser único para evitar duplicidades.
+
+5. VERIFICAÇÃO DE PRODUTOS:
+   Certifique-se que os produtos enviados na nota fiscal já estejam cadastrados
+   no WMS antes de enviar a nota.
+
+===============================================================================
+                                   FIM DO TUTORIAL
+===============================================================================
+
+Para mais informações ou suporte, entre em contato com a equipe de tecnologia. 

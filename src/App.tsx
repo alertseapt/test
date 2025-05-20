@@ -543,8 +543,8 @@ function App() {
     setApiResponse(null);
 
     try {
-      // URL da API original
-      const originalApiUrl = 'http://webcorpem.no-ip.info:37560/scripts/mh.dll/wc';
+      // URL da API Proxy
+      const proxyApiUrlBase = 'https://proxytest-production.up.railway.app/api/wms'; // URL atualizada
       
       // Obter o JSON de mercadorias atualizado
       const mercadoriasJson = mercadoriaInfo;
@@ -552,54 +552,112 @@ function App() {
       const nfJson = generateUpdatedJson() || nfInfo;
       
       // Serializar JSONs para envio (sem escape Unicode)
-      const mercadoriasJsonString = serializeJsonWithoutEscape(mercadoriasJson);
-      const nfJsonString = serializeJsonWithoutEscape(nfJson);
+      const mercadoriasPayload = {
+        CGCCLIWMS: mercadoriasJson?.CORPEM_ERP_MERC.CGCCLIWMS,
+        PRODUTOS: mercadoriasJson?.CORPEM_ERP_MERC.PRODUTOS
+      };
+      const mercadoriasJsonString = serializeJsonWithoutEscape(mercadoriasPayload);
+
+      const nfPayload = {
+        CGCCLIWMS: nfJson?.CORPEM_ERP_DOC_ENT.CGCCLIWMS,
+        CGCREM: nfJson?.CORPEM_ERP_DOC_ENT.CGCREM,
+        OBSRESDP: nfJson?.CORPEM_ERP_DOC_ENT.OBSRESDP,
+        TPDESTNF: nfJson?.CORPEM_ERP_DOC_ENT.TPDESTNF,
+        DEV: nfJson?.CORPEM_ERP_DOC_ENT.DEV,
+        NUMNF: nfJson?.CORPEM_ERP_DOC_ENT.NUMNF,
+        SERIENF: nfJson?.CORPEM_ERP_DOC_ENT.SERIENF,
+        DTEMINF: nfJson?.CORPEM_ERP_DOC_ENT.DTEMINF,
+        VLTOTALNF: nfJson?.CORPEM_ERP_DOC_ENT.VLTOTALNF,
+        NUMEPEDCLI: nfJson?.CORPEM_ERP_DOC_ENT.NUMEPEDCLI,
+        CHAVENF: nfJson?.CORPEM_ERP_DOC_ENT.CHAVENF,
+        CHAVENF_DEV: nfJson?.CORPEM_ERP_DOC_ENT.CHAVENF_DEV,
+        ITENS: nfJson?.CORPEM_ERP_DOC_ENT.ITENS
+      };
+      const nfJsonString = serializeJsonWithoutEscape(nfPayload);
       
       // Mostrar no console o conteúdo que está sendo enviado
-      console.log('=== INÍCIO DO PROCESSO DE INTEGRAÇÃO ===');
-      console.log('\n1. JSON DE MERCADORIAS (CORPEM_ERP_MERC):');
+      console.log('=== INÍCIO DO PROCESSO DE INTEGRAÇÃO (VIA PROXY API) ===');
+      console.log('\n1. JSON DE MERCADORIAS (ENVIANDO PARA /products):');
       console.log(mercadoriasJsonString);
-      console.log('\nDetalhes da requisição MERC:');
-      console.log('URL original:', originalApiUrl);
+      console.log('URL do Proxy (Mercadorias):', `${proxyApiUrlBase}/products`);
       console.log('Método: POST');
-      console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
+      console.log('Headers: Content-Type=application/json');
       
-      // AVISO: Não é possível enviar diretamente para a API devido a restrições de CORS
-      console.log('\n⚠️ AVISO DE LIMITAÇÃO TÉCNICA:');
-      console.log('Devido a restrições de segurança do navegador (CORS), não é possível enviar dados diretamente para a API.');
-      console.log('Para implementar esta integração em produção, será necessário:');
-      console.log('1. Criar um servidor backend (Node.js, PHP, etc.) que serve como proxy para a API do Mercocamp');
-      console.log('2. Enviar os dados para este servidor backend, que por sua vez envia para a API Mercocamp');
-      console.log('3. O servidor backend recebe a resposta da API Mercocamp e retorna para o frontend');
-      
-      // Simulando sucesso para testes de interface
-      console.log('\n🔄 Simulando integração para fins de teste...');
-      
-      // Simulando resposta da API para mercadorias
-      const mercadoriasData = { CORPEM_WS_OK: 'OK' };
-      console.log('\n✅ [Simulação] Resposta do servidor (MERC):', JSON.stringify(mercadoriasData, null, 2));
-      
-      // Prosseguir com o segundo passo (envio da NF)
-      console.log('\n2. JSON DE NOTA FISCAL (CORPEM_ERP_DOC_ENT):');
-      console.log(nfJsonString);
-      console.log('\nDetalhes da requisição DOC_ENT:');
-      console.log('URL original:', originalApiUrl);
-      console.log('Método: POST');
-      console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
-      
-      // Simulando resposta da API para NF
-      const nfData = { CORPEM_WS_OK: 'OK' };
-      console.log('\n✅ [Simulação] Resposta do servidor (DOC_ENT):', JSON.stringify(nfData, null, 2));
-      
-      console.log('\n✅ [Simulação] PROCESSO DE INTEGRAÇÃO SIMULADO COM SUCESSO!');
-      console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO SIMULADA ===');
-      
-      // Atualizar a interface
+      // Configuração da requisição para o JSON de mercadorias
+      const mercadoriasRequestOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: mercadoriasJsonString
+      };
+
+      // 1. Primeiro envio: JSON de mercadorias
+      console.log('\n▶️ Iniciando envio de mercadorias (via Proxy API)...');
       setApiResponse({
-        success: true,
-        message: '[SIMULAÇÃO] Integração concluída com sucesso! Obs: Esta é uma simulação. Para implementação real, é necessário criar um backend que atue como proxy para a API.'
+        success: false,
+        message: 'Enviando cadastro de mercadorias (via Proxy API)...'
       });
       
+      const mercadoriasResponse = await fetch(`${proxyApiUrlBase}/products`, mercadoriasRequestOptions);
+      const mercadoriasData = await mercadoriasResponse.json();
+      
+      console.log('\n✅ Resposta do servidor (Proxy API - Mercadorias):', JSON.stringify(mercadoriasData, null, 2));
+
+      // Verificar se a resposta foi bem-sucedida
+      if (mercadoriasData && mercadoriasData.CORPEM_WS_OK === 'OK') {
+        // 2. Se bem-sucedido, enviar o JSON de documentos
+        console.log('\n2. JSON DE NOTA FISCAL (ENVIANDO PARA /inbound):');
+        console.log(nfJsonString);
+        console.log('URL do Proxy (Nota Fiscal):', `${proxyApiUrlBase}/inbound`);
+        console.log('Método: POST');
+        console.log('Headers: Content-Type=application/json');
+        
+        console.log('\n▶️ Iniciando envio de nota fiscal (via Proxy API)...');
+        setApiResponse({
+          success: false,
+          message: 'Cadastro de mercadorias concluído. Enviando nota fiscal (via Proxy API)...'
+        });
+        
+        const nfRequestOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: nfJsonString
+        };
+
+        const nfResponse = await fetch(`${proxyApiUrlBase}/inbound`, nfRequestOptions);
+        const nfData = await nfResponse.json();
+        
+        console.log('\n✅ Resposta do servidor (Proxy API - Nota Fiscal):', JSON.stringify(nfData, null, 2));
+
+        // Verificar resultado final
+        if (nfData && nfData.CORPEM_WS_OK === 'OK') {
+          console.log('\n✅ PROCESSO DE INTEGRAÇÃO (VIA PROXY API) CONCLUÍDO COM SUCESSO!');
+          console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO (VIA PROXY API) ===');
+          setApiResponse({
+            success: true,
+            message: 'Integração (via Proxy API) concluída com sucesso! Os dados de mercadorias e nota fiscal foram enviados e confirmados.'
+          });
+        } else {
+          console.log('\n❌ FALHA NO ENVIO DA NOTA FISCAL (Proxy API)');
+          console.log('Mensagem de erro:', nfData.CORPEM_WS_ERRO || 'Erro desconhecido');
+          console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO (VIA PROXY API) COM ERRO ===');
+          setApiResponse({
+            success: false,
+            message: `Falha ao enviar a nota fiscal (via Proxy API). Mercadorias enviadas, mas erro na nota. Resposta: ${nfData.CORPEM_WS_ERRO || JSON.stringify(nfData)}`
+          });
+        }
+      } else {
+        console.log('\n❌ FALHA NO ENVIO DE MERCADORIAS (Proxy API).');
+        console.log('Mensagem de erro:', mercadoriasData.CORPEM_WS_ERRO || 'Erro desconhecido');
+        console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO (VIA PROXY API) COM ERRO ===');
+        setApiResponse({
+          success: false,
+          message: `Falha ao enviar o cadastro de mercadorias (via Proxy API). Processo interrompido. Resposta: ${mercadoriasData.CORPEM_WS_ERRO || JSON.stringify(mercadoriasData)}`
+        });
+      }
     } catch (error) {
       console.error('\n❌ ERRO NA INTEGRAÇÃO:', error);
       console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');

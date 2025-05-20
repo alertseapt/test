@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import * as xml2js from 'xml2js';
-import MercadoriasManager from './components/MercadoriasManager';
 import { MercadoriaInfoType } from './types/MercadoriasTypes';
 
 // Tipo para a estrutura do produto
@@ -62,6 +61,8 @@ function App() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showRawXml, setShowRawXml] = useState<boolean>(false);
+  const [sendingData, setSendingData] = useState<boolean>(false);
+  const [apiResponse, setApiResponse] = useState<{ success: boolean; message: string } | null>(null);
 
   // Função para extrair valor do XML, tratando casos de _text
   const extractValue = (obj: any): string => {
@@ -241,6 +242,7 @@ function App() {
     setError(null);
     setXmlData(null);
     setNfInfo(null);
+    setMercadoriaInfo(null);
     setProducts([]);
     setEditedProducts([]);
     setShowEditor(false);
@@ -269,6 +271,11 @@ function App() {
         const { nfInfo: extractedInfo, products: extractedProducts } = extractNFInfo(result);
         setNfInfo(extractedInfo);
         setProducts(extractedProducts);
+        
+        // Gerar o mercadoriaInfo diretamente aqui
+        const mercadoriaInfo = extractMercadoriaInfo(result);
+        setMercadoriaInfo(mercadoriaInfo);
+        
         setShowEditor(true);
       });
     } catch (err) {
@@ -278,6 +285,123 @@ function App() {
       setLoading(false);
     }
   };
+
+  // Adicionar a função de extração do mercadoriaInfo
+  const extractMercadoriaInfo = (xmlObj: any): MercadoriaInfoType => {
+    try {
+      // Função para extrair valor do XML, tratando casos de _text
+      const getValue = (obj: any, path: string[]): string => {
+        let current = obj;
+        for (const key of path) {
+          if (!current || current[key] === undefined) return "";
+          current = current[key];
+        }
+        if (!current) return "";
+        if (typeof current === 'string') return current;
+        if (current._text !== undefined) return current._text;
+        if (current.$ && current.$._text) return current.$._text;
+        return "";
+      };
+
+      // Extrair CNPJ do destinatário
+      const nfeProc = xmlObj.nfeProc || {};
+      const nfe = nfeProc.NFe || {};
+      const infNFe = nfe.infNFe || {};
+      const dest = infNFe.dest || {};
+      const cgcCliWms = getValue(dest, ['CNPJ']) || "00000002000000"; // CNPJ do destinatário
+
+      // Extrair produtos da NF-e
+      const det = infNFe.det || [];
+      const detArray = Array.isArray(det) ? det : [det];
+      
+      const produtos = detArray.map((item: any, index: number) => {
+        const prod = item.prod || {};
+        
+        // Extrair dados das tags conforme especificação
+        const codProd = getValue(prod, ['cProd']) || ""; // Tag cProd
+        const nomeProd = getValue(prod, ['xProd']) || ""; // Tag xProd
+        const codUnid = getValue(prod, ['uCom']) || "UN"; // Tag uCom
+        const codBarra = getValue(prod, ['cEAN']) || ""; // Tag cEAN
+        
+        // Criar embalagem padrão
+        const embalagens = [{
+          CODUNID: codUnid,
+          FATOR: "1", // Sempre 1 conforme especificação
+          CODBARRA: codBarra,
+          PESOLIQ: "",
+          PESOBRU: "",
+          ALT: "",
+          LAR: "",
+          COMP: "",
+          VOL: ""
+        }];
+        
+        return {
+          CODPROD: codProd,
+          NOMEPROD: nomeProd,
+          IWS_ERP: "1", // Valor padrão
+          TPOLRET: "1", // Valor padrão
+          IAUTODTVEN: "0", // Valor padrão
+          QTDDPZOVEN: "", // Valor padrão
+          ILOTFAB: "0", // Valor padrão
+          IDTFAB: "0", // Valor padrão
+          IDTVEN: "0", // Valor padrão
+          INSER: "0", // Valor padrão
+          SEM_LOTE_CKO: "0", // Valor padrão
+          SEM_DTVEN_CKO: "0", // Valor padrão
+          CODFAB: "", // A preencher pelo usuário
+          NOMEFAB: "", // A preencher pelo usuário
+          CODGRU: "", // A preencher pelo usuário
+          NOMEGRU: "", // A preencher pelo usuário
+          EMBALAGENS: embalagens
+        };
+      });
+      
+      // Criar o objeto de saída
+      const result: MercadoriaInfoType = {
+        CORPEM_ERP_MERC: {
+          CGCCLIWMS: cgcCliWms,
+          PRODUTOS: produtos
+        }
+      };
+      
+      return result;
+    } catch (err) {
+      console.error('Erro ao extrair informações de mercadorias:', err);
+      throw new Error('Erro ao processar os dados de mercadorias.');
+    }
+  };
+
+  // Atualizar os produtos de mercadorias quando os produtos editados mudarem
+  useEffect(() => {
+    // Se não houver mercadoriaInfo ou produtos editados, não faz nada
+    if (!mercadoriaInfo || editedProducts.length === 0) return;
+    
+    // Criar uma cópia profunda do mercadoriaInfo
+    const updatedMercadoriaInfo = JSON.parse(JSON.stringify(mercadoriaInfo));
+    
+    // Atualizar cada produto com os valores editados
+    updatedMercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS = mercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS.map((produto, index) => {
+      const editedProduct = editedProducts[index];
+      
+      // Se não houver produto editado correspondente, usar o original
+      if (!editedProduct) return produto;
+      
+      // Atualizar os valores editáveis relevantes
+      return {
+        ...produto,
+        CODPROD: editedProduct.editedCodProd || produto.CODPROD,
+        NOMEPROD: editedProduct.editedDescricao || produto.NOMEPROD,
+        EMBALAGENS: produto.EMBALAGENS.map(emb => ({
+          ...emb,
+          CODUNID: editedProduct.editedUnidade || emb.CODUNID
+        }))
+      };
+    });
+    
+    // Atualizar o estado
+    setMercadoriaInfo(updatedMercadoriaInfo);
+  }, [editedProducts]);
 
   // Função para atualizar produto editado
   const handleProductChange = (index: number, field: keyof EditedProductType, value: string) => {
@@ -342,7 +466,7 @@ function App() {
     const jsonToDownload = generateUpdatedJson();
     if (!jsonToDownload) return;
     
-    const jsonString = JSON.stringify(jsonToDownload, null, 2);
+    const jsonString = serializeJsonWithoutEscape(jsonToDownload);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -359,7 +483,7 @@ function App() {
   const downloadMercadoriasJson = () => {
     if (!mercadoriaInfo) return;
     
-    const jsonString = JSON.stringify(mercadoriaInfo, null, 2);
+    const jsonString = serializeJsonWithoutEscape(mercadoriaInfo);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -370,11 +494,6 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-
-  // Handler para receber o JSON de mercadorias do MercadoriasManager
-  const handleMercadoriaJsonGenerated = (json: MercadoriaInfoType) => {
-    setMercadoriaInfo(json);
   };
 
   // Formatando para exibição
@@ -399,6 +518,143 @@ function App() {
     
     // Retornar o número inteiro
     return intValue.toString();
+  };
+
+  // Função para serializar JSON sem escape de caracteres Unicode
+  const serializeJsonWithoutEscape = (obj: any): string => {
+    return JSON.stringify(obj, null, 0)
+      .replace(/\\u[\dA-F]{4}/gi, match => {
+        return String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16));
+      });
+  };
+
+  // Função para enviar dados para a API
+  const sendDataToApi = async () => {
+    if (!mercadoriaInfo || !nfInfo) {
+      setApiResponse({
+        success: false,
+        message: 'Não há dados para enviar. Por favor, carregue um arquivo XML.'
+      });
+      return;
+    }
+
+    setSendingData(true);
+    setApiResponse(null);
+
+    try {
+      // Endpoint fixo conforme especificação
+      const apiUrl = 'http://webcorpem.no-ip.info:37560/scripts/mh.dll/wc';
+      
+      // Obter o JSON de mercadorias atualizado
+      const mercadoriasJson = mercadoriaInfo;
+      // Obter o JSON de NF atualizado
+      const nfJson = generateUpdatedJson() || nfInfo;
+      
+      // Serializar JSONs para envio (sem escape Unicode)
+      const mercadoriasJsonString = serializeJsonWithoutEscape(mercadoriasJson);
+      const nfJsonString = serializeJsonWithoutEscape(nfJson);
+      
+      // Mostrar no console o conteúdo que está sendo enviado
+      console.log('=== INÍCIO DO PROCESSO DE INTEGRAÇÃO ===');
+      console.log('\n1. JSON DE MERCADORIAS (CORPEM_ERP_MERC):');
+      console.log(mercadoriasJsonString);
+      console.log('\nDetalhes da requisição MERC:');
+      console.log('URL:', apiUrl);
+      console.log('Método: POST');
+      console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
+      
+      // Configuração da requisição para o JSON de mercadorias (CORPEM_ERP_MERC)
+      const mercadoriasRequestOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'TOKEN_CP': ''  // TOKEN_CP vazio conforme especificação
+        },
+        // Serialização sem escape de caracteres Unicode
+        body: mercadoriasJsonString
+      };
+
+      // 1. Primeiro envio: JSON de mercadorias (CORPEM_ERP_MERC)
+      console.log('\n▶️ Iniciando envio de mercadorias (CORPEM_ERP_MERC)...');
+      
+      // Mensagem temporária para feedback na interface
+      setApiResponse({
+        success: false,
+        message: 'Enviando cadastro de mercadorias (CORPEM_ERP_MERC)...'
+      });
+      
+      const mercadoriasResponse = await fetch(apiUrl, mercadoriasRequestOptions);
+      const mercadoriasData = await mercadoriasResponse.json();
+      
+      console.log('\n✅ Resposta do servidor (MERC):', JSON.stringify(mercadoriasData, null, 2));
+
+      // Verificar se a resposta foi bem-sucedida: {"CORPEM_WS_OK": "OK"}
+      if (mercadoriasData && mercadoriasData.CORPEM_WS_OK === 'OK') {
+        // 2. Se bem-sucedido, enviar o JSON de documentos (CORPEM_ERP_DOC_ENT)
+        console.log('\n2. JSON DE NOTA FISCAL (CORPEM_ERP_DOC_ENT):');
+        console.log(nfJsonString);
+        console.log('\nDetalhes da requisição DOC_ENT:');
+        console.log('URL:', apiUrl);
+        console.log('Método: POST');
+        console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
+        
+        console.log('\n▶️ Iniciando envio de nota fiscal (CORPEM_ERP_DOC_ENT)...');
+        
+        // Mensagem temporária para feedback na interface
+        setApiResponse({
+          success: false,
+          message: 'Cadastro de mercadorias concluído. Enviando nota fiscal (CORPEM_ERP_DOC_ENT)...'
+        });
+        
+        const nfRequestOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'TOKEN_CP': ''  // TOKEN_CP vazio conforme especificação
+          },
+          // Serialização sem escape de caracteres Unicode
+          body: nfJsonString
+        };
+
+        const nfResponse = await fetch(apiUrl, nfRequestOptions);
+        const nfData = await nfResponse.json();
+        
+        console.log('\n✅ Resposta do servidor (DOC_ENT):', JSON.stringify(nfData, null, 2));
+
+        // Verificar resultado final
+        if (nfData && nfData.CORPEM_WS_OK === 'OK') {
+          console.log('\n✅ PROCESSO DE INTEGRAÇÃO CONCLUÍDO COM SUCESSO!');
+          console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO ===');
+          setApiResponse({
+            success: true,
+            message: 'Integração concluída com sucesso! Os dados de mercadorias e nota fiscal foram enviados e confirmados.'
+          });
+        } else {
+          console.log('\n❌ FALHA NO ENVIO DA NOTA FISCAL (DOC_ENT)');
+          console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
+          setApiResponse({
+            success: false,
+            message: `Falha ao enviar a nota fiscal. O cadastro de mercadorias foi concluído, mas ocorreu um erro no envio da nota. Resposta: ${JSON.stringify(nfData)}`
+          });
+        }
+      } else {
+        console.log('\n❌ FALHA NO ENVIO DE MERCADORIAS (MERC). PROCESSO INTERROMPIDO.');
+        console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
+        setApiResponse({
+          success: false,
+          message: `Falha ao enviar o cadastro de mercadorias. O processo foi interrompido. Resposta: ${JSON.stringify(mercadoriasData)}`
+        });
+      }
+    } catch (error) {
+      console.error('\n❌ ERRO NA INTEGRAÇÃO:', error);
+      console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
+      setApiResponse({
+        success: false,
+        message: 'Erro durante a integração: ' + (error instanceof Error ? error.message : String(error))
+      });
+    } finally {
+      setSendingData(false);
+    }
   };
 
   return (
@@ -496,72 +752,65 @@ function App() {
                 </div>
               ))}
             </div>
-            
-            <div className="action-buttons">
-              <button onClick={downloadJson} className="download-button">
-                Baixar JSON Atualizado
-              </button>
-            </div>
           </div>
         )}
         
-        {nfInfo && (
-          <div className="xml-result json-result">
-            <div className="result-header">
-              <h2>JSON Formatado (Padrão CORPEM_ERP_DOC_ENT):</h2>
-              <button 
-                onClick={downloadJson} 
-                className="download-button"
-              >
-                Baixar JSON
-              </button>
-            </div>
-            <pre>{JSON.stringify(generateUpdatedJson() || nfInfo, null, 2)}</pre>
-          </div>
-        )}
-        
-        {mercadoriaInfo && (
-          <div className="xml-result json-result">
-            <div className="result-header">
-              <h2>JSON Formatado (Padrão CORPEM_ERP_MERC):</h2>
-              <button 
-                onClick={downloadMercadoriasJson} 
-                className="download-button"
-              >
-                Baixar JSON
-              </button>
-            </div>
-            <pre>{JSON.stringify(mercadoriaInfo, null, 2)}</pre>
-          </div>
-        )}
-        
-        {/* Seção de cadastro de mercadorias (agora sem visualização do JSON) */}
+        {/* Botões na parte inferior, apenas o botão de envio agora */}
         {xmlData && (
-          <div className="mercadorias-section">
-            <h2>Cadastro de Mercadorias (CORPEM_ERP_MERC)</h2>
-            <MercadoriasManager 
-              xmlData={xmlData} 
-              editedProducts={editedProducts} 
-              onJsonGenerated={handleMercadoriaJsonGenerated}
-            />
-          </div>
-        )}
-        
-        {xmlData && (
-          <div>
-            <button 
-              onClick={() => setShowRawXml(!showRawXml)} 
-              className="toggle-button"
-            >
-              {showRawXml ? 'Ocultar XML' : 'Mostrar XML Original'}
-            </button>
+          <div className="bottom-controls" style={{ 
+            marginTop: '40px',
+            padding: '20px',
+            backgroundColor: '#333',
+            borderRadius: '5px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '15px',
+            alignItems: 'center'
+          }}>
+            {/* Botão de integração */}
+            <div className="api-action" style={{ width: '100%' }}>
+              <button 
+                onClick={sendDataToApi} 
+                className="api-button"
+                disabled={sendingData || !nfInfo || !mercadoriaInfo}
+                style={{
+                  fontSize: '1.2rem',
+                  padding: '15px 25px',
+                  backgroundColor: '#0d47a1',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  width: '100%',
+                  minWidth: '250px'
+                }}
+              >
+                {sendingData ? 'Enviando...' : 'Enviar para Sistema Mercocamp'}
+              </button>
+              {(!nfInfo || !mercadoriaInfo) && 
+                <p style={{color: '#ff9800', margin: '10px 0 0 0', textAlign: 'center'}}>
+                  Aguarde o processamento completo do arquivo para habilitar o envio
+                </p>
+              }
+              
+              {apiResponse && (
+                <div className={`api-response ${apiResponse.success ? 'success' : 'error'}`} style={{
+                  marginTop: '15px', 
+                  padding: '10px',
+                  backgroundColor: apiResponse.success ? '#0d392d' : '#5c1515',
+                  color: 'white',
+                  borderRadius: '4px'
+                }}>
+                  {apiResponse.message}
+                </div>
+              )}
+            </div>
             
-            {showRawXml && (
-              <div className="xml-result">
-                <h2>Dados Originais do XML:</h2>
-                <pre>{JSON.stringify(xmlData, null, 2)}</pre>
-              </div>
-            )}
+            {/* Dica para o usuário */}
+            <p style={{ color: '#aaa', fontSize: '0.9rem', textAlign: 'center', margin: '5px 0 0 0' }}>
+              Os dados das requisições serão exibidos no console do navegador (F12)
+            </p>
           </div>
         )}
       </header>

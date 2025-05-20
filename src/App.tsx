@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import * as xml2js from 'xml2js';
+import MercadoriasManager from './components/MercadoriasManager';
+import { MercadoriaInfoType } from './types/MercadoriasTypes';
 
 // Tipo para a estrutura do produto
 interface ProductType {
@@ -53,6 +55,7 @@ interface NFInfoType {
 function App() {
   const [xmlData, setXmlData] = useState<any>(null);
   const [nfInfo, setNfInfo] = useState<NFInfoType | null>(null);
+  const [mercadoriaInfo, setMercadoriaInfo] = useState<MercadoriaInfoType | null>(null);
   const [products, setProducts] = useState<ProductType[]>([]);
   const [editedProducts, setEditedProducts] = useState<EditedProductType[]>([]);
   const [showEditor, setShowEditor] = useState<boolean>(false);
@@ -352,6 +355,28 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Função para baixar o JSON formatado de mercadorias
+  const downloadMercadoriasJson = () => {
+    if (!mercadoriaInfo) return;
+    
+    const jsonString = JSON.stringify(mercadoriaInfo, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'mercadorias.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Handler para receber o JSON de mercadorias do MercadoriasManager
+  const handleMercadoriaJsonGenerated = (json: MercadoriaInfoType) => {
+    setMercadoriaInfo(json);
+  };
+
   // Formatando para exibição
   const formatNumber = (value: string): string => {
     if (!value) return '';
@@ -492,6 +517,33 @@ function App() {
               </button>
             </div>
             <pre>{JSON.stringify(generateUpdatedJson() || nfInfo, null, 2)}</pre>
+          </div>
+        )}
+        
+        {mercadoriaInfo && (
+          <div className="xml-result json-result">
+            <div className="result-header">
+              <h2>JSON Formatado (Padrão CORPEM_ERP_MERC):</h2>
+              <button 
+                onClick={downloadMercadoriasJson} 
+                className="download-button"
+              >
+                Baixar JSON
+              </button>
+            </div>
+            <pre>{JSON.stringify(mercadoriaInfo, null, 2)}</pre>
+          </div>
+        )}
+        
+        {/* Seção de cadastro de mercadorias (agora sem visualização do JSON) */}
+        {xmlData && (
+          <div className="mercadorias-section">
+            <h2>Cadastro de Mercadorias (CORPEM_ERP_MERC)</h2>
+            <MercadoriasManager 
+              xmlData={xmlData} 
+              editedProducts={editedProducts} 
+              onJsonGenerated={handleMercadoriaJsonGenerated}
+            />
           </div>
         )}
         

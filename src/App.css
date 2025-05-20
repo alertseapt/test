@@ -226,3 +226,85 @@ pre {
   margin-bottom: 1.5rem;
   color: #61dafb;
 }
+
+/* Estilos para a seção de mercadorias */
+.mercadorias-section {
+  margin-top: 30px;
+  padding: 20px;
+  border-top: 1px solid #ddd;
+  width: 100%;
+}
+
+.mercadorias-section h2 {
+  font-size: 1.6rem;
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+/* Ajuste para produtos e embalagens */
+.produto-item {
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  background-color: #f9f9f9;
+}
+
+.produto-header {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 15px;
+}
+
+.produto-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.produto-section, .embalagens-section {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.embalagem-item {
+  border-top: 1px dashed #ddd;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.json-preview {
+  margin-top: 20px;
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 5px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.json-preview pre {
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.info-message {
+  background-color: #2c3e5070;
+  color: #61dafb;
+  padding: 12px;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 15px 0;
+}

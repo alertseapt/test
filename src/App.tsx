@@ -127,7 +127,7 @@ function App() {
       const dataEmissao = getValue(ide, ['dhEmi']);
       
       // Extrair valor total
-      const valorTotal = getValue(total, ['vNF']);
+      const valorTotal = getValue(total, ['vProd']);
       
       // Extrair chave da NF
       const chaveNF = getValue(protNFe, ['infProt', 'chNFe']);

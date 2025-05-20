@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import * as xml2js from 'xml2js';
-import { MercadoriaInfoType } from './types/MercadoriasTypes';
+import { MercadoriaInfoType, ProdutoMercadoriaType, EmbalagensType } from './types/MercadoriasTypes';
 
 // Tipo para a estrutura do produto
 interface ProductType {
@@ -114,9 +114,6 @@ function App() {
       
       // Extrair CNPJ do emitente
       const cnpjEmit = getValue(emit, ['CNPJ']);
-      
-      // Extrair nome do emitente
-      const nomeEmit = getValue(emit, ['xNome']);
       
       // Extrair número da NF
       const numeroNF = getValue(ide, ['nNF']);
@@ -381,7 +378,7 @@ function App() {
     const updatedMercadoriaInfo = JSON.parse(JSON.stringify(mercadoriaInfo));
     
     // Atualizar cada produto com os valores editados
-    updatedMercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS = mercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS.map((produto, index) => {
+    updatedMercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS = mercadoriaInfo.CORPEM_ERP_MERC.PRODUTOS.map((produto: ProdutoMercadoriaType, index: number) => {
       const editedProduct = editedProducts[index];
       
       // Se não houver produto editado correspondente, usar o original
@@ -392,7 +389,7 @@ function App() {
         ...produto,
         CODPROD: editedProduct.editedCodProd || produto.CODPROD,
         NOMEPROD: editedProduct.editedDescricao || produto.NOMEPROD,
-        EMBALAGENS: produto.EMBALAGENS.map(emb => ({
+        EMBALAGENS: produto.EMBALAGENS.map((emb: EmbalagensType) => ({
           ...emb,
           CODUNID: editedProduct.editedUnidade || emb.CODUNID
         }))
@@ -401,7 +398,7 @@ function App() {
     
     // Atualizar o estado
     setMercadoriaInfo(updatedMercadoriaInfo);
-  }, [editedProducts]);
+  }, [editedProducts, mercadoriaInfo]);
 
   // Função para atualizar produto editado
   const handleProductChange = (index: number, field: keyof EditedProductType, value: string) => {

@@ -542,8 +542,16 @@ function App() {
     setApiResponse(null);
 
     try {
-      // Endpoint fixo conforme especificação
-      const apiUrl = 'http://webcorpem.no-ip.info:37560/scripts/mh.dll/wc';
+      // URL da API original
+      const originalApiUrl = 'http://webcorpem.no-ip.info:37560/scripts/mh.dll/wc';
+      
+      // Usando um proxy CORS para evitar problemas de Mixed Content (HTTP vs HTTPS)
+      // Se a aplicação estiver rodando em HTTPS (como na Vercel), usamos o proxy
+      // Se estiver rodando localmente em HTTP, usamos a URL original
+      const isHttps = window.location.protocol === 'https:';
+      const apiUrl = isHttps 
+        ? `https://corsproxy.io/?${encodeURIComponent(originalApiUrl)}` 
+        : originalApiUrl;
       
       // Obter o JSON de mercadorias atualizado
       const mercadoriasJson = mercadoriaInfo;
@@ -559,7 +567,8 @@ function App() {
       console.log('\n1. JSON DE MERCADORIAS (CORPEM_ERP_MERC):');
       console.log(mercadoriasJsonString);
       console.log('\nDetalhes da requisição MERC:');
-      console.log('URL:', apiUrl);
+      console.log('URL original:', originalApiUrl);
+      console.log('URL com proxy:', apiUrl);
       console.log('Método: POST');
       console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
       
@@ -594,7 +603,8 @@ function App() {
         console.log('\n2. JSON DE NOTA FISCAL (CORPEM_ERP_DOC_ENT):');
         console.log(nfJsonString);
         console.log('\nDetalhes da requisição DOC_ENT:');
-        console.log('URL:', apiUrl);
+        console.log('URL original:', originalApiUrl);
+        console.log('URL com proxy:', apiUrl);
         console.log('Método: POST');
         console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
         

@@ -546,14 +546,6 @@ function App() {
       // URL da API original
       const originalApiUrl = 'http://webcorpem.no-ip.info:37560/scripts/mh.dll/wc';
       
-      // Usando um proxy CORS para evitar problemas de Mixed Content (HTTP vs HTTPS)
-      // Se a aplicação estiver rodando em HTTPS (como na Vercel), usamos o proxy
-      // Se estiver rodando localmente em HTTP, usamos a URL original
-      const isHttps = window.location.protocol === 'https:';
-      const apiUrl = isHttps 
-        ? `https://corsproxy.io/?${encodeURIComponent(originalApiUrl)}` 
-        : originalApiUrl;
-      
       // Obter o JSON de mercadorias atualizado
       const mercadoriasJson = mercadoriaInfo;
       // Obter o JSON de NF atualizado
@@ -569,127 +561,45 @@ function App() {
       console.log(mercadoriasJsonString);
       console.log('\nDetalhes da requisição MERC:');
       console.log('URL original:', originalApiUrl);
-      console.log('URL com proxy:', apiUrl);
       console.log('Método: POST');
       console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
       
-      // Configuração da requisição para o JSON de mercadorias (CORPEM_ERP_MERC)
-      const mercadoriasRequestOptions = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'TOKEN_CP': ''  // TOKEN_CP vazio conforme especificação
-        },
-        // Serialização sem escape de caracteres Unicode
-        body: mercadoriasJsonString,
-        mode: 'no-cors' as RequestMode // Correção da tipagem para RequestMode
-      };
-
-      // 1. Primeiro envio: JSON de mercadorias (CORPEM_ERP_MERC)
-      console.log('\n▶️ Iniciando envio de mercadorias (CORPEM_ERP_MERC)...');
+      // AVISO: Não é possível enviar diretamente para a API devido a restrições de CORS
+      console.log('\n⚠️ AVISO DE LIMITAÇÃO TÉCNICA:');
+      console.log('Devido a restrições de segurança do navegador (CORS), não é possível enviar dados diretamente para a API.');
+      console.log('Para implementar esta integração em produção, será necessário:');
+      console.log('1. Criar um servidor backend (Node.js, PHP, etc.) que serve como proxy para a API do Mercocamp');
+      console.log('2. Enviar os dados para este servidor backend, que por sua vez envia para a API Mercocamp');
+      console.log('3. O servidor backend recebe a resposta da API Mercocamp e retorna para o frontend');
       
-      // Mensagem temporária para feedback na interface
+      // Simulando sucesso para testes de interface
+      console.log('\n🔄 Simulando integração para fins de teste...');
+      
+      // Simulando resposta da API para mercadorias
+      const mercadoriasData = { CORPEM_WS_OK: 'OK' };
+      console.log('\n✅ [Simulação] Resposta do servidor (MERC):', JSON.stringify(mercadoriasData, null, 2));
+      
+      // Prosseguir com o segundo passo (envio da NF)
+      console.log('\n2. JSON DE NOTA FISCAL (CORPEM_ERP_DOC_ENT):');
+      console.log(nfJsonString);
+      console.log('\nDetalhes da requisição DOC_ENT:');
+      console.log('URL original:', originalApiUrl);
+      console.log('Método: POST');
+      console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
+      
+      // Simulando resposta da API para NF
+      const nfData = { CORPEM_WS_OK: 'OK' };
+      console.log('\n✅ [Simulação] Resposta do servidor (DOC_ENT):', JSON.stringify(nfData, null, 2));
+      
+      console.log('\n✅ [Simulação] PROCESSO DE INTEGRAÇÃO SIMULADO COM SUCESSO!');
+      console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO SIMULADA ===');
+      
+      // Atualizar a interface
       setApiResponse({
-        success: false,
-        message: 'Enviando cadastro de mercadorias (CORPEM_ERP_MERC)...'
+        success: true,
+        message: '[SIMULAÇÃO] Integração concluída com sucesso! Obs: Esta é uma simulação. Para implementação real, é necessário criar um backend que atue como proxy para a API.'
       });
       
-      const mercadoriasResponse = await fetch(apiUrl, mercadoriasRequestOptions);
-      
-      // Declarar mercadoriasData no escopo maior para acessibilidade
-      let mercadoriasData: any;
-      
-      // Verificar se a resposta pode ser processada
-      if (mercadoriasResponse.type === 'opaque') {
-        console.log('\n⚠️ Resposta opaca recebida (no-cors mode). Assumindo sucesso e continuando...');
-        
-        // No modo no-cors, não podemos acessar os dados da resposta
-        // Vamos assumir sucesso e continuar com o fluxo
-        mercadoriasData = { CORPEM_WS_OK: 'OK' };
-        
-        console.log('\n✅ Assumindo resposta do servidor (MERC):', JSON.stringify(mercadoriasData, null, 2));
-      } else {
-        mercadoriasData = await mercadoriasResponse.json();
-        console.log('\n✅ Resposta do servidor (MERC):', JSON.stringify(mercadoriasData, null, 2));
-      }
-
-      // Verificar se a resposta foi bem-sucedida: {"CORPEM_WS_OK": "OK"}
-      if (mercadoriasData && mercadoriasData.CORPEM_WS_OK === 'OK') {
-        // 2. Se bem-sucedido, enviar o JSON de documentos (CORPEM_ERP_DOC_ENT)
-        console.log('\n2. JSON DE NOTA FISCAL (CORPEM_ERP_DOC_ENT):');
-        console.log(nfJsonString);
-        console.log('\nDetalhes da requisição DOC_ENT:');
-        console.log('URL original:', originalApiUrl);
-        console.log('URL com proxy:', apiUrl);
-        console.log('Método: POST');
-        console.log('Headers: Content-Type=application/json; charset=utf-8, TOKEN_CP=""');
-        
-        console.log('\n▶️ Iniciando envio de nota fiscal (CORPEM_ERP_DOC_ENT)...');
-        
-        // Mensagem temporária para feedback na interface
-        setApiResponse({
-          success: false,
-          message: 'Cadastro de mercadorias concluído. Enviando nota fiscal (CORPEM_ERP_DOC_ENT)...'
-        });
-        
-        const nfRequestOptions = {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'TOKEN_CP': ''  // TOKEN_CP vazio conforme especificação
-          },
-          // Serialização sem escape de caracteres Unicode
-          body: nfJsonString,
-          mode: 'no-cors' as RequestMode // Correção da tipagem para RequestMode
-        };
-
-        const nfResponse = await fetch(apiUrl, nfRequestOptions);
-        
-        // Verificar se a resposta pode ser processada
-        if (nfResponse.type === 'opaque') {
-          console.log('\n⚠️ Resposta opaca recebida (no-cors mode). Assumindo sucesso e continuando...');
-          
-          // No modo no-cors, não podemos acessar os dados da resposta
-          // Vamos assumir sucesso e finalizar o processo
-          const nfData = { CORPEM_WS_OK: 'OK' };
-          
-          console.log('\n✅ Assumindo resposta do servidor (DOC_ENT):', JSON.stringify(nfData, null, 2));
-          
-          console.log('\n✅ PROCESSO DE INTEGRAÇÃO CONCLUÍDO COM SUCESSO!');
-          console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO ===');
-          setApiResponse({
-            success: true,
-            message: 'Integração concluída! Os dados foram enviados, mas não foi possível verificar a confirmação do servidor devido a restrições de CORS.'
-          });
-        } else {
-          const nfData = await nfResponse.json();
-          console.log('\n✅ Resposta do servidor (DOC_ENT):', JSON.stringify(nfData, null, 2));
-          
-          // Verificar resultado final
-          if (nfData && nfData.CORPEM_WS_OK === 'OK') {
-            console.log('\n✅ PROCESSO DE INTEGRAÇÃO CONCLUÍDO COM SUCESSO!');
-            console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO ===');
-            setApiResponse({
-              success: true,
-              message: 'Integração concluída com sucesso! Os dados de mercadorias e nota fiscal foram enviados e confirmados.'
-            });
-          } else {
-            console.log('\n❌ FALHA NO ENVIO DA NOTA FISCAL (DOC_ENT)');
-            console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
-            setApiResponse({
-              success: false,
-              message: `Falha ao enviar a nota fiscal. O cadastro de mercadorias foi concluído, mas ocorreu um erro no envio da nota. Resposta: ${JSON.stringify(nfData)}`
-            });
-          }
-        }
-      } else {
-        console.log('\n❌ FALHA NO ENVIO DE MERCADORIAS (MERC). PROCESSO INTERROMPIDO.');
-        console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
-        setApiResponse({
-          success: false,
-          message: `Falha ao enviar o cadastro de mercadorias. O processo foi interrompido. Resposta: ${JSON.stringify(mercadoriasData)}`
-        });
-      }
     } catch (error) {
       console.error('\n❌ ERRO NA INTEGRAÇÃO:', error);
       console.log('=== FIM DO PROCESSO DE INTEGRAÇÃO COM ERRO ===');
